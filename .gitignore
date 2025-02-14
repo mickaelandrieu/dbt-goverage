@@ -1,0 +1,5 @@
+dbt-goverage
+dbt-goverage.exe
+*.json
+!tests/target/catalog.json
+!tests/target/manifest.json
