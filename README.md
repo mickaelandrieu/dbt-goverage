@@ -41,6 +41,16 @@ go build -o dbt-goverage.exe
 
 > ⚠️ Assurez-vous que `dbt` a généré les fichiers `manifest.json` et `catalog.json` dans le répertoire `target/`.
 
+
+### 4️⃣ **Exécuter la suite de tests**
+
+```sh
+git clone https://github.com/mickaelandrieu/dbt-goverage.git
+go test
+```
+
+> ⚠️ Assurez-vous que `dbt` a généré les fichiers `manifest.json` et `catalog.json` dans le répertoire `target/`.
+
 ---
 
 ## 📌 Utilisation
