@@ -53,6 +53,51 @@ type Column struct {
 	Test bool
 }
 
+// Table contient les informations sur une table et ses colonnes.
+type Table struct {
+	UniqueID         string
+	Name             string
+	OriginalFilePath string
+	Columns          map[string]Column
+}
+
+// Catalog contient l'ensemble des tables du catalog.
+type Catalog struct {
+	Tables map[string]Table
+}
+
+// Manifest représente le manifest dbt.
+type Manifest struct {
+	Sources   map[string]map[string]interface{}
+	Models    map[string]map[string]interface{}
+	Seeds     map[string]map[string]interface{}
+	Snapshots map[string]map[string]interface{}
+	Tests     map[string]map[string][]interface{}
+}
+
+type ColumnReport struct {
+	Name     string  `json:"name"`
+	Covered  int     `json:"covered"`
+	Total    int     `json:"total"`
+	Coverage float64 `json:"coverage"`
+}
+
+type TableReport struct {
+	Name     string         `json:"name"`
+	Covered  int            `json:"covered"`
+	Total    int            `json:"total"`
+	Coverage float64        `json:"coverage"`
+	Columns  []ColumnReport `json:"columns"`
+}
+
+type JSONReport struct {
+	CovType  string        `json:"cov_type"`
+	Covered  int           `json:"covered"`
+	Total    int           `json:"total"`
+	Coverage float64       `json:"coverage"`
+	Tables   []TableReport `json:"tables"`
+}
+
 func NewColumnFromNode(node map[string]interface{}) Column {
 	name := strings.ToLower(node["name"].(string))
 	return Column{Name: name}
@@ -70,14 +115,6 @@ func IsValidDoc(doc interface{}) bool {
 
 func IsValidTest(tests []interface{}) bool {
 	return len(tests) > 0
-}
-
-// Table contient les informations sur une table et ses colonnes.
-type Table struct {
-	UniqueID         string
-	Name             string
-	OriginalFilePath string
-	Columns          map[string]Column
 }
 
 func NewTableFromNode(node map[string]interface{}, manifest *Manifest) (Table, error) {
@@ -113,16 +150,15 @@ func NewTableFromNode(node map[string]interface{}, manifest *Manifest) (Table, e
 	}, nil
 }
 
-// Catalog contient l'ensemble des tables du catalog.
-type Catalog struct {
-	Tables map[string]Table
-}
-
 func (c Catalog) FilterTables(modelPathFilter []string) Catalog {
 	filtered := make(map[string]Table)
 	for id, table := range c.Tables {
+
+		originalPath := filepath.ToSlash(table.OriginalFilePath)
 		for _, filt := range modelPathFilter {
-			if strings.HasPrefix(table.OriginalFilePath, filt) {
+
+			normalizedFilt := filepath.ToSlash(filt)
+			if strings.HasPrefix(originalPath, normalizedFilt) {
 				filtered[id] = table
 				break
 			}
@@ -144,17 +180,6 @@ func CatalogFromNodes(nodes []interface{}, manifest *Manifest) (Catalog, error) 
 		}
 	}
 	return Catalog{Tables: tables}, nil
-}
-
-// --- Manifest ---
-
-// Manifest représente le manifest dbt.
-type Manifest struct {
-	Sources   map[string]map[string]interface{}
-	Models    map[string]map[string]interface{}
-	Seeds     map[string]map[string]interface{}
-	Snapshots map[string]map[string]interface{}
-	Tests     map[string]map[string][]interface{}
 }
 
 func (m *Manifest) GetTable(tableID string) (map[string]interface{}, error) {
@@ -297,31 +322,22 @@ func normalizeTable(table map[string]interface{}) map[string]interface{} {
 	return table
 }
 
-// --- Structures pour le rapport JSON ---
-
-type ColumnReport struct {
-	Name     string  `json:"name"`
-	Covered  int     `json:"covered"`
-	Total    int     `json:"total"`
-	Coverage float64 `json:"coverage"`
+// --- Structures pour l'affichage détaillé en console ---
+type TableCoverage struct {
+	ModelName string
+	Covered   int
+	Total     int
 }
 
-type TableReport struct {
-	Name     string         `json:"name"`
-	Covered  int            `json:"covered"`
-	Total    int            `json:"total"`
-	Coverage float64        `json:"coverage"`
-	Columns  []ColumnReport `json:"columns"`
+type DetailedCoverageReport struct {
+	TableReports []TableCoverage
+	TotalCovered int
+	TotalColumns int
+	TableCount   int
+	CovType      CoverageType
 }
 
-type JSONReport struct {
-	CovType  string        `json:"cov_type"`
-	Covered  int           `json:"covered"`
-	Total    int           `json:"total"`
-	Coverage float64       `json:"coverage"`
-	Tables   []TableReport `json:"tables"`
-}
-
+// --- Fonctions pour le calcul et l'affichage détaillé en console ---
 func computeJSONReport(catalog Catalog, covType CoverageType) JSONReport {
 	var tables []TableReport
 	globalCovered := 0
@@ -377,22 +393,6 @@ func computeJSONReport(catalog Catalog, covType CoverageType) JSONReport {
 	}
 }
 
-// --- Structures pour l'affichage détaillé en console ---
-
-type TableCoverage struct {
-	ModelName string
-	Covered   int
-	Total     int
-}
-
-type DetailedCoverageReport struct {
-	TableReports []TableCoverage
-	TotalCovered int
-	TotalColumns int
-	TableCount   int
-	CovType      CoverageType
-}
-
 func computeDetailedCoverage(catalog Catalog, covType CoverageType) DetailedCoverageReport {
 	var reports []TableCoverage
 	totalCovered := 0
@@ -430,9 +430,8 @@ func computeDetailedCoverage(catalog Catalog, covType CoverageType) DetailedCove
 	}
 }
 
-// --- Fonctions pour affichage détaillé en console ---
 func printDetailedCoverageReport(report DetailedCoverageReport) {
-	// Affichage de l'en-tête global
+
 	fmt.Printf("%s ✅ Analyse terminée : %d tables, %d colonnes analysées.\n\n",
 		currentLogPrefix(), report.TableCount, report.TotalColumns)
 	fmt.Printf("📊 Coverage Report (%s)\n", strings.ToUpper(string(report.CovType)))
@@ -447,7 +446,6 @@ func printDetailedCoverageReport(report DetailedCoverageReport) {
 		tablewriter.ALIGN_LEFT, tablewriter.ALIGN_CENTER, tablewriter.ALIGN_RIGHT,
 	})
 
-	// Ajout des lignes pour chaque modèle
 	for _, tr := range report.TableReports {
 		ratio := fmt.Sprintf("(%d/%d)", tr.Covered, tr.Total)
 		coverage := "0.0%"
@@ -457,7 +455,6 @@ func printDetailedCoverageReport(report DetailedCoverageReport) {
 		table.Append([]string{tr.ModelName, ratio, coverage})
 	}
 
-	// Ajout d'une ligne de pied de page avec les totaux
 	totalRatio := fmt.Sprintf("(%d/%d)", report.TotalCovered, report.TotalColumns)
 	totalCoverage := "0.0%"
 	if report.TotalColumns > 0 {
@@ -465,16 +462,12 @@ func printDetailedCoverageReport(report DetailedCoverageReport) {
 	}
 	table.SetFooter([]string{"TOTAL", totalRatio, totalCoverage})
 
-	// Rendu du tableau
 	table.Render()
 }
 
 func currentLogPrefix() string {
-	// On peut personnaliser ici la date/heure si besoin.
 	return time.Now().Format("02-01-2006 15:04:05")
 }
-
-// --- Fonctions de chargement ---
 
 func checkManifestVersion(manifestJSON map[string]interface{}) {
 	metadata, ok := manifestJSON["metadata"].(map[string]interface{})
@@ -618,8 +611,6 @@ func loadFiles(projectDir string, runArtifactsDir string) (Catalog, error) {
 	return catalog, nil
 }
 
-// --- Fonctions de calcul et écriture du rapport ---
-
 func writeCoverageReport(report JSONReport, path string) error {
 	data, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
@@ -629,8 +620,6 @@ func writeCoverageReport(report JSONReport, path string) error {
 	return os.WriteFile(path, data, 0644)
 }
 
-// --- Fonctions principales ---
-
 func doCompute(projectDir, runArtifactsDir, output string, covType CoverageType, modelPathFilter []string) error {
 	catalog, err := loadFiles(projectDir, runArtifactsDir)
 	if err != nil {
@@ -639,15 +628,13 @@ func doCompute(projectDir, runArtifactsDir, output string, covType CoverageType,
 	if len(modelPathFilter) > 0 {
 		catalog = catalog.FilterTables(modelPathFilter)
 		if len(catalog.Tables) == 0 {
-			return errors.New("aucune table après filtrage, vérifiez model_path_filter")
+			return errors.New("aucune table après filtrage, vérifiez path_filter")
 		}
 	}
 
-	// Affichage détaillé dans la console
 	detailedReport := computeDetailedCoverage(catalog, covType)
 	printDetailedCoverageReport(detailedReport)
 
-	// Construction du rapport JSON global détaillé
 	jsonReport := computeJSONReport(catalog, covType)
 	if err := writeCoverageReport(jsonReport, output); err != nil {
 		return err
@@ -658,9 +645,9 @@ func doCompute(projectDir, runArtifactsDir, output string, covType CoverageType,
 func main() {
 	var (
 		projectDir      = flag.String("dbt_dir", ".", "Chemin du projet dbt")
-		runArtifactsDir = flag.String("target_dir", "", "Chemin personnalisé pour les fichiers catalog et manifest")
+		runArtifactsDir = flag.String("target_dir", "target", "Chemin personnalisé pour les fichiers catalog et manifest")
 		output          = flag.String("output", "coverage.json", "Fichier de sortie du rapport de couverture (JSON)")
-		covTypeStr      = flag.String("type", "doc", "Type de couverture à calculer (doc ou test)")
+		covTypeStr      = flag.String("type", "test", "Type de couverture à calculer (doc ou test)")
 		modelFilter     = flag.String("path_filter", "", "Filtre de chemin pour les modèles (séparé par des virgules)")
 		verbose         = flag.Bool("verbose", false, "Activer les logs détaillés")
 	)

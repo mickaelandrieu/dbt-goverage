@@ -3,31 +3,38 @@
 **dbt-goverage** est un outil écrit en **Go** permettant d'analyser la couverture documentaire et de tests des bases de données gérées par **dbt** (Data Build Tool). Il génère un rapport JSON indiquant quelles colonnes sont documentées ou testées et calcule un taux de couverture global.
 
 ## 🚀 Fonctionnalités
-- 📊 Analyse la **couverture documentaire** (`description` non vide dans `manifest.json`).
-- ✅ Analyse la **couverture des tests** (`test` non vide dans `manifest.json`).
-- 📝 Génère un **rapport JSON** avec les statistiques par table et le taux de couverture global.
-- ⚡ Peut être exécuté sur **Windows, macOS et Linux**.
+
+- Analyse la **couverture documentaire** (`description` non vide dans `manifest.json`).
+- Analyse la **couverture des tests** (`test` non vide dans `manifest.json`).
+- Génère un **rapport JSON** avec les statistiques par table et le taux de couverture global.
+- Peut être exécuté sur **Windows, macOS et Linux**.
+- **Contrairement à `dbt-coverage`, ne fait pas (et ne fera pas) de comparaisons de builds.**
 
 ---
 
 ## 📦 Installation
+
 ### 1️⃣ **Cloner le projet**
 ```sh
- git clone https://github.com/ton-repo/dbt-goverage.git
+ git clone https://github.com/mickaelandrieu/dbt-goverage.git
  cd dbt-goverage
 ```
 
 ### 2️⃣ **Compiler le projet**
+
 #### 🔹 Linux/macOS
+
 ```sh
 go build -o dbt-goverage
 ```
 #### 🔹 Windows
+
 ```sh
 go build -o dbt-goverage.exe
 ```
 
 ### 3️⃣ **Exécuter l'outil**
+
 ```sh
 ./dbt-goverage --target_dir . --type doc --output coverage_doc.json
 ```
@@ -37,35 +44,42 @@ go build -o dbt-goverage.exe
 ---
 
 ## 📌 Utilisation
-### 🏗️ **Syntaxe**
+
+### **Commande Principale**
+
+Si vous l'utilisez à la racine d'un projet dbt, alors la commande est très simple.
+
 ```sh
-./dbt-goverage --target_dir <path> --type <doc|test> --output <output_file>
+./dbt-goverage
 ```
 
-### 📜 **Arguments**
-| Argument         | Type   | Description |
-|-----------------|--------|-------------|
-| `--target_dir` | string | 📁 Répertoire contenant les fichiers `manifest.json` et `catalog.json`. *(Par défaut : `.`)* |
-| `--type`        | string | 🔍 Type de couverture à analyser (`doc` pour documentation, `test` pour tests). *(Par défaut : `doc`)* |
-| `--output`      | string | 📂 Chemin du fichier JSON de sortie. *(Par défaut : `coverage_report.json`)* |
+### **Principaux Arguments**
+| Argument           | Type   | Description |
+|--------------------|--------|-------------|
+| `--target_dir `   | string | 📁 Répertoire contenant les fichiers `manifest.json` et `catalog.json`. *(Par défaut : `target`)* |
+| `--type`          | string | 🔍 Type de couverture à analyser (`doc` pour documentation, `test` pour tests). *(Par défaut : `test`)* |
+| `--output`        | string | 📂 Chemin du fichier JSON de sortie. *(Par défaut : `coverage_report.json`)* |
 
-### 🔹 **Exemples**
-#### 🔍 **Analyse de la documentation**
+### **Exemples**
+
+#### **Analyse de la documentation**
+
 ```sh
 ./dbt-goverage --project_dir . --type doc --output coverage_doc.json
 ```
-#### ✅ **Analyse des tests**
+
+#### **Analyse des tests**
 ```sh
 ./dbt-goverage --project_dir . --type test --output coverage_test.json
 ```
-#### 📂 **Personnalisation du répertoire et du fichier de sortie**
+#### **Personnalisation du répertoire et du fichier de sortie**
 ```sh
 ./dbt-goverage --project_dir /data/dbt_project --type doc --output /reports/doc_coverage.json
 ```
 
 ---
 
-## 📄 **Exemple de sortie JSON**
+## **Exemple de sortie JSON**
 
 ```json
 {
@@ -97,6 +111,10 @@ go build -o dbt-goverage.exe
   ]
 }
 ```
+
+## **Exemple de sortie Console**
+
+![Sortie Console](docs/console_output.png)
 
 ---
 
