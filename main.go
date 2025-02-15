@@ -658,9 +658,9 @@ func doCompute(projectDir, runArtifactsDir, output string, covType CoverageType,
 func main() {
 	var (
 		projectDir      = flag.String("dbt_dir", ".", "Chemin du projet dbt")
-		runArtifactsDir = flag.String("target_dir", "", "Chemin personnalisé pour les fichiers catalog et manifest")
+		runArtifactsDir = flag.String("target_dir", "target", "Chemin personnalisé pour les fichiers catalog et manifest")
 		output          = flag.String("output", "coverage.json", "Fichier de sortie du rapport de couverture (JSON)")
-		covTypeStr      = flag.String("type", "doc", "Type de couverture à calculer (doc ou test)")
+		covTypeStr      = flag.String("type", "test", "Type de couverture à calculer (doc ou test)")
 		modelFilter     = flag.String("path_filter", "", "Filtre de chemin pour les modèles (séparé par des virgules)")
 		verbose         = flag.Bool("verbose", false, "Activer les logs détaillés")
 	)
