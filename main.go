@@ -1,4 +1,3 @@
-// main.go
 package main
 
 import (
@@ -15,8 +14,6 @@ import (
 
 	"github.com/olekukonko/tablewriter"
 )
-
-// --- Constantes et enums ---
 
 var SupportedManifestSchemaVersions = []string{
 	"https://schemas.getdbt.com/dbt/manifest/v4.json",
@@ -44,16 +41,12 @@ const (
 	FormatMarkdownTable CoverageFormat = "markdown"
 )
 
-// --- Structures internes ---
-
-// Column représente la couverture d'une colonne (documentation et tests)
 type Column struct {
 	Name string
 	Doc  bool
 	Test bool
 }
 
-// Table contient les informations sur une table et ses colonnes.
 type Table struct {
 	UniqueID         string
 	Name             string
@@ -61,12 +54,10 @@ type Table struct {
 	Columns          map[string]Column
 }
 
-// Catalog contient l'ensemble des tables du catalog.
 type Catalog struct {
 	Tables map[string]Table
 }
 
-// Manifest représente le manifest dbt.
 type Manifest struct {
 	Sources   map[string]map[string]interface{}
 	Models    map[string]map[string]interface{}
@@ -120,11 +111,11 @@ func IsValidTest(tests []interface{}) bool {
 func NewTableFromNode(node map[string]interface{}, manifest *Manifest) (Table, error) {
 	uniqueID, ok := node["unique_id"].(string)
 	if !ok {
-		return Table{}, errors.New("unique_id absent ou invalide")
+		return Table{}, errors.New("unique_id missing or invalid")
 	}
 	manifestTable, err := manifest.GetTable(uniqueID)
 	if err != nil {
-		return Table{}, fmt.Errorf("unique_id %s non trouvé dans le manifest", uniqueID)
+		return Table{}, fmt.Errorf("unique_id %s is missing in the manifest", uniqueID)
 	}
 	cols := make(map[string]Column)
 	if columnsRaw, ok := node["columns"].(map[string]interface{}); ok {
@@ -139,7 +130,7 @@ func NewTableFromNode(node map[string]interface{}, manifest *Manifest) (Table, e
 	if v, ok := manifestTable["original_file_path"].(string); ok {
 		origPath = v
 	} else {
-		log.Printf("warning: original_file_path introuvable pour %s", uniqueID)
+		log.Printf("warning: original_file_path not found in %s", uniqueID)
 	}
 	name := strings.ToLower(manifestTable["name"].(string))
 	return Table{
@@ -164,7 +155,7 @@ func (c Catalog) FilterTables(modelPathFilter []string) Catalog {
 			}
 		}
 	}
-	log.Printf("Tables après filtrage : %d", len(filtered))
+	log.Printf("Tables after filtering: %d", len(filtered))
 	return Catalog{Tables: filtered}
 }
 
@@ -197,10 +188,10 @@ func (m *Manifest) GetTable(tableID string) (map[string]interface{}, error) {
 		candidates = append(candidates, v)
 	}
 	if len(candidates) == 0 {
-		return nil, fmt.Errorf("table %s non trouvée", tableID)
+		return nil, fmt.Errorf("table %s not found", tableID)
 	}
 	if len(candidates) > 1 {
-		return nil, fmt.Errorf("unique_id %s en double", tableID)
+		return nil, fmt.Errorf("unique_id %s is a duplicate", tableID)
 	}
 	return candidates[0], nil
 }
@@ -232,7 +223,6 @@ func ManifestFromNodes(manifestNodes map[string]interface{}) (*Manifest, error) 
 			id, _ := node["unique_id"].(string)
 			snapshots[id] = normalizeTable(node)
 		case "test":
-			// Traitement détaillé du noeud test
 			if _, exists := node["test_metadata"]; !exists {
 				continue
 			}
@@ -322,7 +312,6 @@ func normalizeTable(table map[string]interface{}) map[string]interface{} {
 	return table
 }
 
-// --- Structures pour l'affichage détaillé en console ---
 type TableCoverage struct {
 	ModelName string
 	Covered   int
@@ -337,7 +326,6 @@ type DetailedCoverageReport struct {
 	CovType      CoverageType
 }
 
-// --- Fonctions pour le calcul et l'affichage détaillé en console ---
 func computeJSONReport(catalog Catalog, covType CoverageType) JSONReport {
 	var tables []TableReport
 	globalCovered := 0
@@ -432,7 +420,7 @@ func computeDetailedCoverage(catalog Catalog, covType CoverageType) DetailedCove
 
 func printDetailedCoverageReport(report DetailedCoverageReport) {
 
-	fmt.Printf("%s ✅ Analyse terminée : %d tables, %d colonnes analysées.\n\n",
+	fmt.Printf("%s ✅ Analysis done: %d tables, %d columns.\n\n",
 		currentLogPrefix(), report.TableCount, report.TotalColumns)
 	fmt.Printf("📊 Coverage Report (%s)\n", strings.ToUpper(string(report.CovType)))
 	fmt.Println()
@@ -483,7 +471,7 @@ func checkManifestVersion(manifestJSON map[string]interface{}) {
 		}
 	}
 	if !found {
-		log.Printf("warning: manifest version %s non supportée. Versions supportées: %v", version, SupportedManifestSchemaVersions)
+		log.Printf("warning: manifest version %s invalid. Valid versions: %v", version, SupportedManifestSchemaVersions)
 	}
 }
 
@@ -495,7 +483,7 @@ func loadManifest(projectDir string, runArtifactsDir string) (*Manifest, error) 
 		manifestPath = filepath.Join(runArtifactsDir, "manifest.json")
 	}
 	if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("manifest.json non trouvé dans %s", manifestPath)
+		return nil, fmt.Errorf("manifest.json not found in %s", manifestPath)
 	}
 	data, err := os.ReadFile(manifestPath)
 	if err != nil {
@@ -528,7 +516,7 @@ func loadCatalog(projectDir string, runArtifactsDir string, manifest *Manifest) 
 		catalogPath = filepath.Join(runArtifactsDir, "catalog.json")
 	}
 	if _, err := os.Stat(catalogPath); os.IsNotExist(err) {
-		return Catalog{}, fmt.Errorf("catalog.json non trouvé dans %s", catalogPath)
+		return Catalog{}, fmt.Errorf("catalog.json not found in %s", catalogPath)
 	}
 	data, err := os.ReadFile(catalogPath)
 	if err != nil {
@@ -554,9 +542,9 @@ func loadCatalog(projectDir string, runArtifactsDir string, manifest *Manifest) 
 
 func loadFiles(projectDir string, runArtifactsDir string) (Catalog, error) {
 	if runArtifactsDir == "" {
-		log.Printf("Chargement des fichiers depuis le projet : %s", projectDir)
+		log.Printf("Loading files from: %s", projectDir)
 	} else {
-		log.Printf("Chargement des fichiers depuis le dossier personnalisé : %s", runArtifactsDir)
+		log.Printf("Loading files from a specified artifacts folder: %s", runArtifactsDir)
 	}
 	manifest, err := loadManifest(projectDir, runArtifactsDir)
 	if err != nil {
@@ -566,7 +554,7 @@ func loadFiles(projectDir string, runArtifactsDir string) (Catalog, error) {
 	if err != nil {
 		return Catalog{}, err
 	}
-	// Mise à jour des colonnes avec les infos de doc et test depuis le manifest.
+
 	for tableID, table := range catalog.Tables {
 		var manifestTable map[string]interface{}
 		if v, ok := manifest.Sources[tableID]; ok {
@@ -616,7 +604,7 @@ func writeCoverageReport(report JSONReport, path string) error {
 	if err != nil {
 		return err
 	}
-	log.Printf("Écriture du rapport dans %s", path)
+	log.Printf("Writing report into %s", path)
 	return os.WriteFile(path, data, 0644)
 }
 
@@ -628,7 +616,7 @@ func doCompute(projectDir, runArtifactsDir, output string, covType CoverageType,
 	if len(modelPathFilter) > 0 {
 		catalog = catalog.FilterTables(modelPathFilter)
 		if len(catalog.Tables) == 0 {
-			return errors.New("aucune table après filtrage, vérifiez path_filter")
+			return errors.New("no table after applying the filter, please check the `path_filter` value")
 		}
 	}
 
@@ -644,12 +632,12 @@ func doCompute(projectDir, runArtifactsDir, output string, covType CoverageType,
 
 func main() {
 	var (
-		projectDir      = flag.String("dbt_dir", ".", "Chemin du projet dbt")
-		runArtifactsDir = flag.String("target_dir", "target", "Chemin personnalisé pour les fichiers catalog et manifest")
-		output          = flag.String("output", "coverage.json", "Fichier de sortie du rapport de couverture (JSON)")
-		covTypeStr      = flag.String("type", "test", "Type de couverture à calculer (doc ou test)")
-		modelFilter     = flag.String("path_filter", "", "Filtre de chemin pour les modèles (séparé par des virgules)")
-		verbose         = flag.Bool("verbose", false, "Activer les logs détaillés")
+		projectDir      = flag.String("dbt_dir", ".", "dbt project path")
+		runArtifactsDir = flag.String("target_dir", "target", "dbt target path")
+		output          = flag.String("output", "coverage.json", "Output filename (JSON)")
+		covTypeStr      = flag.String("type", "test", "Coverage type (doc ou test)")
+		modelFilter     = flag.String("path_filter", "", "Path filter to select the models (split using ',')")
+		verbose         = flag.Bool("verbose", false, "Enable verbose logging")
 	)
 	flag.Parse()
 
@@ -666,6 +654,6 @@ func main() {
 	}
 
 	if err := doCompute(*projectDir, *runArtifactsDir, *output, covType, filters); err != nil {
-		log.Fatalf("Erreur lors du calcul de la couverture: %v", err)
+		log.Fatalf("error computing the coverage value: %v", err)
 	}
 }
